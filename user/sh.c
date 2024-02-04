@@ -109,6 +109,7 @@ runcmd(struct cmd *cmd)
       close(p[1]);
       runcmd(pcmd->left);
     }
+    wait(0); // must waiting for left executed
     if(fork1() == 0){
       close(0);
       dup(p[0]);
@@ -118,7 +119,7 @@ runcmd(struct cmd *cmd)
     }
     close(p[0]);
     close(p[1]);
-    wait(0);
+    //wait(0); //if put wait here, some output will be lost
     wait(0);
     break;
 
