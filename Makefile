@@ -137,6 +137,7 @@ UPROGS=\
 	$U/_find\
 	$U/_xargs\
 	$U/_trace\
+	$U/_sysinfotest\
 	$U/_zombie\
 
 fs.img: mkfs/mkfs README $(UPROGS)
