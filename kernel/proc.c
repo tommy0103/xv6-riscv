@@ -86,6 +86,7 @@ myproc(void)
   struct cpu *c = mycpu();
   struct proc *p = c->proc;
   pop_off();
+  // p -> trace_id = 0; // It just a null pointer.
   return p;
 }
 
@@ -168,6 +169,7 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+  p->trace_id = 0; // must free
   p->state = UNUSED;
 }
 
@@ -309,6 +311,9 @@ fork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
+
+  np->trace_id = p->trace_id; // copy trace id & trace pid
+  // np->trace_pid = np->pid; // do not need.
 
   pid = np->pid;
 

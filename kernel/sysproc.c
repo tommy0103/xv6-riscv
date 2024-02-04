@@ -89,3 +89,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_trace(void) {
+  int id;
+  argint(0, &id);
+  if(id < 0) return -1;
+  struct proc *p = myproc();
+  p->trace_id = id;
+  // p->trace_pid = p->pid;
+  return 0;
+}

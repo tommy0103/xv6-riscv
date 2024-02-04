@@ -104,4 +104,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  int trace_id;                // trace enable with id
+  // int trace_pid;               // not use it instead set trace_id = 0 when free proc
 };
