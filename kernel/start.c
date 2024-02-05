@@ -31,6 +31,7 @@ start()
   w_mepc((uint64)main);
 
   // disable paging for now.
+  // register satp stored the physical address of the page table in the memory
   w_satp(0);
 
   // delegate all interrupts and exceptions to supervisor mode.
