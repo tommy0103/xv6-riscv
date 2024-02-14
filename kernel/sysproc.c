@@ -89,3 +89,39 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_pgaccess(void)
+{
+  int len = 0;
+  uint64 va = 0, addr = 0, mask = 0;
+  struct proc *p = myproc();
+  argaddr(0, &va);
+  argint(1, &len);
+  argaddr(2, &addr);
+  pte_t *pte = 0;
+  // printf("%p\n", va);
+  for(int i = 0; i < len; ++i) {
+    // printf("%p %d\n", va, i);
+    pte = walk(p->pagetable, va, 0);
+    if(pte != 0 && (*pte & PTE_A)) {
+    // if(*pte & PTE_A) {
+      *pte ^= PTE_A;
+      mask |= (1 << i);
+    }
+    va += PGSIZE;
+  }
+  // pagetable_t pgtbl = walk(p->pagetable, va, 0);
+  // for(int i = 0; i < len; ++i) {
+  //   if(*pgtbl & PTE_A) {
+  //     *pgtbl ^= PTE_A;
+  //     mask |= (1 << i);
+  //   }
+  //   pgtbl += PGSIZE; 
+  // } // not right because va is continuous but address of pgtbl is not continuous
+  if(copyout(p->pagetable, (uint64)addr, (char*)&mask, 8) < 0) {
+    panic("pgaccess: copyout error\n");
+    return 0;
+  }
+  return mask;
+}
