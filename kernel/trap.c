@@ -13,6 +13,7 @@ extern char trampoline[], uservec[], userret[];
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
+void timervec();
 
 extern int devintr();
 
@@ -77,8 +78,24 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) 
+  {
+    // intr_on()
+    // printf("Running\n", 1);
+    if(p->period != 0) {
+      // w_stvec((uint64)timervec);
+      ++p->ticks;
+      if(p->ticks == p->period) {
+        // printf("Yeah\n");
+        p->ticks = 0;
+        p->trapframe->epc = (uint64)p->fn;
+      }
+    }
+    // int tmp1 = r_tp(), tmp2 = r_sstatus();
     yield();
+    // w_tp(tmp1); w_sstatus(tmp2);
+  }
+    
 
   usertrapret();
 }

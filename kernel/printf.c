@@ -115,6 +115,20 @@ printf(char *fmt, ...)
     release(&pr.lock);
 }
 
+void 
+backtrace(void)
+{
+  const uint64 bound = 0x80000000;
+  uint64 fp = r_fp();
+  printf("backtrace:\n");
+  while(fp) {
+    uint64 addr = *((uint64*)(fp - 8));
+    if(addr < bound) break;
+    printf("%p\n", addr);
+    fp = *((uint64*)(fp - 16));
+  }
+}
+
 void
 panic(char *s)
 {
@@ -123,6 +137,7 @@ panic(char *s)
   printf(s);
   printf("\n");
   panicked = 1; // freeze uart output from other CPUs
+  backtrace();
   for(;;)
     ;
 }

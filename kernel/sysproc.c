@@ -65,6 +65,7 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -88,4 +89,28 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64 sys_sigalarm(void)
+{
+  int period = 0;
+  uint64 fn = 0;
+  
+  // printf("%d %p", period, (uint64)fn);
+  argint(0, &period);
+  argaddr(1, &fn);
+  // printf("%d %p", period, (uint64)fn);
+  if(period == 0) return 0;
+  struct proc *p = myproc();
+  
+  // printf("%d %p %p", period, (uint64)fn, p);
+  p->period = period;
+  p->ticks = 0;
+  p->fn = (void (*)(void))fn;
+  return 0;
+}
+
+uint64 sys_sigreturn(void) 
+{
+  return 0;
 }
