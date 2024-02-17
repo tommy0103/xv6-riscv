@@ -66,7 +66,7 @@ usertrap(void)
 
     syscall();
   } 
-  if(scause_val == 12 || scause_val == 13 || scause_val == 15) {
+  else if(scause_val == 12 || scause_val == 13 || scause_val == 15) {
     int va = r_stval();
     if(va < p->sz) {
       char *mem = kalloc();
