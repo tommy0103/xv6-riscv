@@ -100,9 +100,12 @@ uint64 sys_sigalarm(void)
   argint(0, &period);
   argaddr(1, &fn);
   // printf("%d %p", period, (uint64)fn);
-  if(period == 0) return 0;
-  struct proc *p = myproc();
   
+  struct proc *p = myproc();
+  if(period == 0) {
+    p->period = 0;
+    return 0;
+  }
   // printf("%d %p %p", period, (uint64)fn, p);
   p->period = period;
   p->ticks = 0;
@@ -112,5 +115,12 @@ uint64 sys_sigalarm(void)
 
 uint64 sys_sigreturn(void) 
 {
-  return 0;
+  struct proc *p = myproc();
+  if(p->have_returned == 1) {
+    p->have_returned = 0;
+    // printf("qwq\n");
+    memmove(p->trapframe, p->savedframe, 288);
+    // printf("%p\n",p->trapframe->a0);
+  }
+  return p->trapframe->a0; // The return value will cover p->trapframe->a0
 }

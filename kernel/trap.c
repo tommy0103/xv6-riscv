@@ -82,12 +82,15 @@ usertrap(void)
   {
     // intr_on()
     // printf("Running\n", 1);
-    if(p->period != 0) {
+    if(p->period != 0 && p->have_returned == 0) {
       // w_stvec((uint64)timervec);
       ++p->ticks;
       if(p->ticks == p->period) {
         // printf("Yeah\n");
         p->ticks = 0;
+        p->have_returned = 1;
+        // p->savedframe = p->trapframe;
+        memmove(p->savedframe, p->trapframe, 288);
         p->trapframe->epc = (uint64)p->fn;
       }
     }
@@ -95,8 +98,7 @@ usertrap(void)
     yield();
     // w_tp(tmp1); w_sstatus(tmp2);
   }
-    
-
+  
   usertrapret();
 }
 
@@ -142,6 +144,7 @@ usertrapret(void)
   // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
+  
   uint64 trampoline_userret = TRAMPOLINE + (userret - trampoline);
   ((void (*)(uint64))trampoline_userret)(satp);
 }

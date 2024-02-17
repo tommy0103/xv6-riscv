@@ -108,4 +108,6 @@ struct proc {
   void (*fn)();
   int period;
   int ticks; 
+  int have_returned;
+  struct trapframe *savedframe;
 };
