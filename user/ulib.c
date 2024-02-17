@@ -147,10 +147,3 @@ memcpy(void *dst, const void *src, uint n)
 {
   return memmove(dst, src, n);
 }
-
-int
-ugetpid(void)
-{
-  struct usyscall *u = (struct usyscall *)USYSCALL;
-  return u->pid;
-}
