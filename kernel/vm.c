@@ -5,7 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
-
+#include "spinlock.h"
+#include "proc.h"
 /*
  * the kernel's page table.
  */
@@ -369,24 +370,39 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0, flags;
-
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    // pa0 = walkaddr(pagetable, va0);
-    pte_t *pte = walk(pagetable, va0, 0);
-    pa0 = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((flags & PTE_W) == 0 && (flags & PTE_CP) != 0) {
-      flags |= PTE_W;
-      char *mem = kalloc();
-      if(mem == 0) return -1;
-      memmove(mem, (char*)pa0, PGSIZE);
-      kfree((void*)pa0);
-      *pte = PA2PTE((uint64)mem) | flags;
-      pa0 = (uint64)mem;
-    }
+    struct proc *p = myproc();
+    // if(va0 >= p->sz) return -1;
+    pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
+    pte_t *pte = walk(pagetable, va0, 0);
+    
+    // pa0 = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    
+    if(*pte == 0) {
+      setkilled(p);
+      return -1;
+    }
+    if((flags & PTE_W) == 0) {
+      if((flags & PTE_CP) != 0 && (flags & PTE_V) != 0 && va0 < p->sz) {
+        flags |= PTE_W;
+        char *mem = kalloc();
+        if(mem == 0) {
+          setkilled(p);
+          return -1;
+        }
+        memmove(mem, (char*)pa0, PGSIZE);
+        kfree((void*)pa0);
+        *pte = PA2PTE((uint64)mem) | flags;
+        pa0 = (uint64)mem;
+      }
+      else {
+        return -1;
+      }
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;

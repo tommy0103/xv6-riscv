@@ -74,6 +74,10 @@ usertrap(void)
       exit(-1);
     }
     pte_t *pte = walk(p->pagetable, va, 0);
+    if(walkaddr(p->pagetable, va) == 0) {
+      setkilled(p);
+      exit(-1);
+    }
     if(*pte & PTE_CP) {
       uint64 pa = PTE2PA(*pte), flags = PTE_FLAGS(*pte);
       char *mem = kalloc();
@@ -85,6 +89,10 @@ usertrap(void)
       memmove(mem, (char*)pa, PGSIZE);
       kfree((void*)pa);
       *pte = PA2PTE((uint64)mem) | flags | PTE_W;
+    }
+    else {
+      setkilled(p);
+      exit(-1);
     }
   } else if((which_dev = devintr()) != 0){
     // ok
