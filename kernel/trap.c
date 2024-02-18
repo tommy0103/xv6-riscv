@@ -10,6 +10,7 @@ struct spinlock tickslock;
 uint ticks;
 
 extern char trampoline[], uservec[], userret[];
+extern int refcount[];
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
@@ -65,6 +66,26 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause() == 15){
+    uint64 va = r_stval();
+    va = PGROUNDDOWN(va);
+    if(va > p->sz) {
+      setkilled(p);
+      exit(-1);
+    }
+    pte_t *pte = walk(p->pagetable, va, 0);
+    if(*pte & PTE_CP) {
+      uint64 pa = PTE2PA(*pte), flags = PTE_FLAGS(*pte);
+      char *mem = kalloc();
+      if(mem == 0) {
+        setkilled(p);
+        exit(-1);
+      }
+      // --refcount[pa / PGSIZE];
+      memmove(mem, (char*)pa, PGSIZE);
+      kfree((void*)pa);
+      *pte = PA2PTE((uint64)mem) | flags | PTE_W;
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

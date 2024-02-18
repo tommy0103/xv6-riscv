@@ -292,6 +292,7 @@ fork(void)
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
+    // printf("qwqwqwqwqw\n");
     return -1;
   }
   np->sz = p->sz;
@@ -321,6 +322,8 @@ fork(void)
   acquire(&np->lock);
   np->state = RUNNABLE;
   release(&np->lock);
+
+  // printf("fork finished\n");
 
   return pid;
 }

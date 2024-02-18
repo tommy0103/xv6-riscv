@@ -15,6 +15,10 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+extern int refcount[];
+
+extern struct spinlock ref_lock;
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -305,10 +309,10 @@ uvmfree(pagetable_t pagetable, uint64 sz)
 int
 uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 {
-  pte_t *pte;
+  pte_t *pte, *child_pte;
   uint64 pa, i;
-  uint flags;
-  char *mem;
+  // uint flags = 0;
+  // char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -316,20 +320,33 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      goto err;
+    if((child_pte = walk(new, i, 1)) == 0) 
+      panic("uvmcopy: error in walk");
+    if(*pte & PTE_W) {
+      *pte ^= PTE_W;
+      *pte |= PTE_CP;
     }
+    // flags = PTE_FLAGS(*pte);
+    acquire(&ref_lock);
+    ++refcount[pa / PGSIZE];
+    release(&ref_lock);
+    // if(mappages(new, i, PGSIZE, pa, flags) != 0) {
+    //   goto err;
+    // }
+    *child_pte = *pte;
+    // if((mem = kalloc()) == 0)
+    //   goto err;
+    // memmove(mem, (char*)pa, PGSIZE);
+    // if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+    //   kfree(mem);
+    //   goto err;
+    // }
   }
   return 0;
 
- err:
-  uvmunmap(new, 0, i / PGSIZE, 1);
-  return -1;
+//  err:
+//   uvmunmap(new, 0, i / PGSIZE, 1);
+//   return -1;
 }
 
 // mark a PTE invalid for user access.
@@ -351,11 +368,23 @@ uvmclear(pagetable_t pagetable, uint64 va)
 int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
-  uint64 n, va0, pa0;
+  uint64 n, va0, pa0, flags;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+    // pa0 = walkaddr(pagetable, va0);
+    pte_t *pte = walk(pagetable, va0, 0);
+    pa0 = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    if((flags & PTE_W) == 0 && (flags & PTE_CP) != 0) {
+      flags |= PTE_W;
+      char *mem = kalloc();
+      if(mem == 0) return -1;
+      memmove(mem, (char*)pa0, PGSIZE);
+      kfree((void*)pa0);
+      *pte = PA2PTE((uint64)mem) | flags;
+      pa0 = (uint64)mem;
+    }
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
